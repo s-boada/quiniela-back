@@ -129,7 +129,7 @@ const INITIAL_PREDICTIONS = {
   "angel_m1": { homeScore: 1, awayScore: 1 },
   "jairo_m1": { homeScore: 2, awayScore: 1 },
   "jesus_m1": { homeScore: 2, awayScore: 0 },
-  "anabell_m1": { homeScore: 2, awayScore: 0 },
+  "anabell_m1": { homeScore: 0, awayScore: 0 },
   "luis_m1": { homeScore: 2, awayScore: 0 },
   "nicolas_m1": { homeScore: 2, awayScore: 0 },
   "yein_m1": { homeScore: 2, awayScore: 0 },
