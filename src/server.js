@@ -302,8 +302,8 @@ app.put("/api/predictions/:matchId", authMiddleware, (req, res) => {
   }
 
   const matchDate = parseMatchDateAsUTC(match.date);
-  if (matchDate.getTime() - Date.now() < 60 * 60 * 1000) {
-    return res.status(400).json({ error: "El tiempo límite para guardar este pronóstico ha expirado" });
+  if (matchDate.getTime() - Date.now() < 5 * 60 * 1000) {
+    return res.status(400).json({ error: "El tiempo límite para guardar este pronóstico ha expirado (5 minutos antes del inicio)" });
   }
 
   const existing = db.prepare("SELECT * FROM predictions WHERE user_id = ? AND match_id = ?").get(userId, matchId);
