@@ -145,7 +145,7 @@ app.get("/api/auth/me", authMiddleware, (req, res) => {
 
 app.get("/api/data", authMiddleware, (_req, res) => {
   const users = getAllUsers();
-  const matches = getAllMatches().filter((match) => KNOCKOUT_STAGES.has(match.stage));
+  const matches = getAllMatches();
   const predictions = predictionsToMap(getAllPredictions());
   res.json({ users, matches, predictions });
 });
@@ -386,7 +386,7 @@ app.post("/api/matches/sync-live", authMiddleware, adminMiddleware, async (_req,
 
   res.json({
     updates,
-    matches: getAllMatches().filter((match) => KNOCKOUT_STAGES.has(match.stage))
+    matches: getAllMatches()
   });
 });
 
