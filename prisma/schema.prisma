@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String       @id
+  passwordHash String       @map("password_hash")
+  displayName  String       @map("display_name")
+  firstName    String?      @map("first_name")
+  lastName     String?      @map("last_name")
+  documentId   String?      @map("document_id")
+  email        String?      @unique
+  role         String       @default("user")
+  avatar       String       @default("⚽")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  predictions  Prediction[]
+
+  @@map("users")
+}
+
+model Match {
+  id            String       @id
+  apiId         Int?         @map("api_id")
+  stage         String
+  groupName     String       @map("group")
+  homeTeam      String       @map("home_team")
+  awayTeam      String       @map("away_team")
+  date          String
+  realHomeScore Int?         @map("real_home_score")
+  realAwayScore Int?         @map("real_away_score")
+  completed     Boolean      @default(false)
+  status        String?
+  liveHomeScore Int?         @map("live_home_score")
+  liveAwayScore Int?         @map("live_away_score")
+  minute        String?
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  predictions   Prediction[]
+
+  @@map("matches")
+}
+
+model Prediction {
+  userId        String   @map("user_id")
+  matchId       String   @map("match_id")
+  homeScore     Int      @map("home_score")
+  awayScore     Int      @map("away_score")
+  qualifiedTeam String?  @map("qualified_team")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match         Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, matchId])
+  @@map("predictions")
+}
