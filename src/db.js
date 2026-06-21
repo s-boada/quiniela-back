@@ -18,6 +18,10 @@ db.exec(`
     id TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL,
     display_name TEXT NOT NULL,
+    first_name TEXT,
+    last_name TEXT,
+    document_id TEXT,
+    email TEXT,
     role TEXT NOT NULL DEFAULT 'user',
     avatar TEXT NOT NULL DEFAULT '⚽',
     created_at TEXT NOT NULL,
@@ -60,6 +64,20 @@ if (!predictionColumns.some((column) => column.name === "qualified_team")) {
   db.exec("ALTER TABLE predictions ADD COLUMN qualified_team TEXT");
 }
 
+const userColumns = db.prepare("PRAGMA table_info(users)").all();
+if (!userColumns.some((column) => column.name === "first_name")) {
+  db.exec("ALTER TABLE users ADD COLUMN first_name TEXT");
+}
+if (!userColumns.some((column) => column.name === "last_name")) {
+  db.exec("ALTER TABLE users ADD COLUMN last_name TEXT");
+}
+if (!userColumns.some((column) => column.name === "document_id")) {
+  db.exec("ALTER TABLE users ADD COLUMN document_id TEXT");
+}
+if (!userColumns.some((column) => column.name === "email")) {
+  db.exec("ALTER TABLE users ADD COLUMN email TEXT");
+}
+
 function transaction(fn) {
   db.exec("BEGIN");
   try {
@@ -81,6 +99,10 @@ function rowToUser(row) {
     id: row.id,
     uid: row.id,
     displayName: row.display_name,
+    firstName: row.first_name ?? null,
+    lastName: row.last_name ?? null,
+    documentId: row.document_id ?? null,
+    email: row.email ?? null,
     role: row.role,
     avatar: row.avatar,
     createdAt: safeDate(row.created_at),

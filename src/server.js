@@ -65,6 +65,11 @@ const KNOCKOUT_STAGES = new Set([
   "Final",
   "Tercer Puesto"
 ]);
+const NAME_REGEX = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+$/;
+const DOCUMENT_REGEX = /^[A-Za-z0-9]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_REGEX = /^[A-Za-z0-9_]+$/;
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,12}$/;
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
@@ -87,13 +92,60 @@ app.post("/api/auth/login", (req, res) => {
   res.json({ token, user });
 });
 
+app.post("/api/auth/register", (req, res) => {
+  const firstName = (req.body.firstName || "").trim();
+  const lastName = (req.body.lastName || "").trim();
+  const documentId = (req.body.documentId || "").trim();
+  const email = (req.body.email || "").trim().toLowerCase();
+  const username = (req.body.username || "").trim().toLowerCase();
+  const password = req.body.password || "";
+
+  if (!firstName || !lastName || !documentId || !email || !username || !password) {
+    return res.status(400).json({ error: "Todos los campos son requeridos" });
+  }
+  if (!NAME_REGEX.test(firstName) || !NAME_REGEX.test(lastName)) {
+    return res.status(400).json({ error: "Nombre y apellido solo permiten letras y espacios" });
+  }
+  if (!DOCUMENT_REGEX.test(documentId)) {
+    return res.status(400).json({ error: "La cédula de identidad debe ser alfanumérica" });
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ error: "Correo electrónico inválido" });
+  }
+  if (!USERNAME_REGEX.test(username)) {
+    return res.status(400).json({ error: "El usuario solo permite letras, números y guion bajo (_)" });
+  }
+  if (!PASSWORD_REGEX.test(password)) {
+    return res.status(400).json({ error: "La contraseña debe tener entre 8 y 12 caracteres, una mayúscula y un carácter especial" });
+  }
+  if (getUserById(username)) {
+    return res.status(409).json({ error: "El usuario ya existe" });
+  }
+
+  const existingEmail = db.prepare("SELECT id FROM users WHERE lower(email) = ?").get(email);
+  if (existingEmail) {
+    return res.status(409).json({ error: "El correo ya está registrado" });
+  }
+
+  const ts = nowIso();
+  const displayName = `${firstName} ${lastName}`.trim();
+  db.prepare(`
+    INSERT INTO users (id, password_hash, display_name, first_name, last_name, document_id, email, role, avatar, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'user', '⚽', ?, ?)
+  `).run(username, hashPassword(password), displayName, firstName, lastName, documentId, email, ts, ts);
+
+  const user = getUserById(username);
+  const token = signToken(user);
+  res.status(201).json({ token, user });
+});
+
 app.get("/api/auth/me", authMiddleware, (req, res) => {
   res.json({ user: req.user });
 });
 
 app.get("/api/data", authMiddleware, (_req, res) => {
   const users = getAllUsers();
-  const matches = getAllMatches();
+  const matches = getAllMatches().filter((match) => KNOCKOUT_STAGES.has(match.stage));
   const predictions = predictionsToMap(getAllPredictions());
   res.json({ users, matches, predictions });
 });
@@ -332,7 +384,10 @@ app.post("/api/matches/sync-live", authMiddleware, adminMiddleware, async (_req,
     }
   });
 
-  res.json({ updates, matches: getAllMatches() });
+  res.json({
+    updates,
+    matches: getAllMatches().filter((match) => KNOCKOUT_STAGES.has(match.stage))
+  });
 });
 
 app.put("/api/predictions/:matchId", authMiddleware, (req, res) => {
