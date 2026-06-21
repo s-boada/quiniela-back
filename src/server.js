@@ -57,6 +57,15 @@ function translateLabel(label) {
     .replace(/Loser Match /g, "Perdedor Partido ");
 }
 
+const KNOCKOUT_STAGES = new Set([
+  "Dieciseisavos de Final",
+  "Octavos de Final",
+  "Cuartos de Final",
+  "Semifinales",
+  "Final",
+  "Tercer Puesto"
+]);
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
@@ -183,6 +192,49 @@ app.put("/api/matches/:id", authMiddleware, adminMiddleware, (req, res) => {
   res.json({ match: getMatchById(req.params.id) });
 });
 
+app.put("/api/matches/:id/team", authMiddleware, adminMiddleware, (req, res) => {
+  const match = getMatchById(req.params.id);
+  if (!match) return res.status(404).json({ error: "Partido no encontrado" });
+
+  const side = (req.body.side || "").trim().toLowerCase();
+  const teamName = (req.body.teamName || "").trim();
+  if (side !== "home" && side !== "away") {
+    return res.status(400).json({ error: "Lado inválido. Usa 'home' o 'away'" });
+  }
+  if (!teamName) {
+    return res.status(400).json({ error: "El nombre del país no puede estar vacío" });
+  }
+
+  const knockoutStages = new Set([
+    "Dieciseisavos de Final",
+    "Octavos de Final",
+    "Cuartos de Final",
+    "Semifinales",
+    "Final",
+    "Tercer Puesto",
+  ]);
+  if (!knockoutStages.has(match.stage)) {
+    return res.status(400).json({ error: "Solo se puede editar equipos en fase eliminatoria" });
+  }
+
+  const currentHome = match.homeTeam || "";
+  const currentAway = match.awayTeam || "";
+  if ((side === "home" && teamName === currentAway) || (side === "away" && teamName === currentHome)) {
+    return res.status(400).json({ error: "Los equipos del partido deben ser distintos" });
+  }
+
+  const nextHome = side === "home" ? teamName : currentHome;
+  const nextAway = side === "away" ? teamName : currentAway;
+  const ts = nowIso();
+  db.prepare(`
+    UPDATE matches
+    SET home_team = ?, away_team = ?, updated_at = ?
+    WHERE id = ?
+  `).run(nextHome, nextAway, ts, req.params.id);
+
+  res.json({ match: getMatchById(req.params.id) });
+});
+
 app.post("/api/matches", authMiddleware, adminMiddleware, (req, res) => {
   const { stage, group, homeTeam, awayTeam, date } = req.body;
   if (!stage || !group || !homeTeam || !awayTeam || !date) {
@@ -288,6 +340,7 @@ app.put("/api/predictions/:matchId", authMiddleware, (req, res) => {
   const userId = req.user.id;
   const homeScore = parseInt(req.body.homeScore, 10);
   const awayScore = parseInt(req.body.awayScore, 10);
+  const qualifiedTeamRaw = req.body.qualifiedTeam;
 
   if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) {
     return res.status(400).json({ error: "Marcadores inválidos" });
@@ -299,6 +352,17 @@ app.put("/api/predictions/:matchId", authMiddleware, (req, res) => {
   if (match.status === "IN_PLAY") return res.status(400).json({ error: "El partido está en vivo" });
   if (isMatchUndetermined(match)) {
     return res.status(400).json({ error: "No puedes pronosticar hasta que se definan los equipos" });
+  }
+
+  let qualifiedTeam = null;
+  if (KNOCKOUT_STAGES.has(match.stage) && homeScore === awayScore) {
+    qualifiedTeam = typeof qualifiedTeamRaw === "string" ? qualifiedTeamRaw.trim() : "";
+    if (!qualifiedTeam) {
+      return res.status(400).json({ error: "Debes indicar cuál país clasifica en caso de empate" });
+    }
+    if (qualifiedTeam !== match.homeTeam && qualifiedTeam !== match.awayTeam) {
+      return res.status(400).json({ error: "El país clasificado debe ser uno de los dos equipos del partido" });
+    }
   }
 
   const matchDate = parseMatchDateAsUTC(match.date);
@@ -313,12 +377,12 @@ app.put("/api/predictions/:matchId", authMiddleware, (req, res) => {
 
   const ts = nowIso();
   db.prepare(`
-    INSERT INTO predictions (user_id, match_id, home_score, away_score, updated_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(userId, matchId, homeScore, awayScore, ts);
+    INSERT INTO predictions (user_id, match_id, home_score, away_score, qualified_team, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(userId, matchId, homeScore, awayScore, qualifiedTeam, ts);
 
   res.json({
-    prediction: { uid: userId, matchId, homeScore, awayScore, updatedAt: ts }
+    prediction: { uid: userId, matchId, homeScore, awayScore, qualifiedTeam, updatedAt: ts }
   });
 });
 

@@ -40,8 +40,8 @@ const insertMatch = db.prepare(`
 `);
 
 const insertPrediction = db.prepare(`
-  INSERT INTO predictions (user_id, match_id, home_score, away_score, updated_at)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO predictions (user_id, match_id, home_score, away_score, qualified_team, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?)
 `);
 
 transaction(() => {
@@ -86,7 +86,7 @@ transaction(() => {
     const underscoreIdx = key.indexOf("_");
     const userId = key.slice(0, underscoreIdx);
     const matchId = key.slice(underscoreIdx + 1);
-    insertPrediction.run(userId, matchId, pred.homeScore, pred.awayScore, ts);
+    insertPrediction.run(userId, matchId, pred.homeScore, pred.awayScore, pred.qualifiedTeam ?? null, ts);
   });
 });
 fs.writeFileSync(passwordsPath, JSON.stringify(passwords, null, 2), "utf8");

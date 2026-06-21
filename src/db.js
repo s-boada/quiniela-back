@@ -47,12 +47,18 @@ db.exec(`
     match_id TEXT NOT NULL,
     home_score INTEGER NOT NULL,
     away_score INTEGER NOT NULL,
+    qualified_team TEXT,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (user_id, match_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
   );
 `);
+
+const predictionColumns = db.prepare("PRAGMA table_info(predictions)").all();
+if (!predictionColumns.some((column) => column.name === "qualified_team")) {
+  db.exec("ALTER TABLE predictions ADD COLUMN qualified_team TEXT");
+}
 
 function transaction(fn) {
   db.exec("BEGIN");
@@ -109,6 +115,7 @@ function rowToPrediction(row) {
     matchId: row.match_id,
     homeScore: row.home_score,
     awayScore: row.away_score,
+    qualifiedTeam: row.qualified_team,
     updatedAt: safeDate(row.updated_at)
   };
 }
@@ -142,7 +149,11 @@ function getAllPredictions() {
 function predictionsToMap(predictions) {
   const map = {};
   predictions.forEach((p) => {
-    map[`${p.uid}_${p.matchId}`] = { homeScore: p.homeScore, awayScore: p.awayScore };
+    map[`${p.uid}_${p.matchId}`] = {
+      homeScore: p.homeScore,
+      awayScore: p.awayScore,
+      qualifiedTeam: p.qualifiedTeam ?? null
+    };
   });
   return map;
 }
