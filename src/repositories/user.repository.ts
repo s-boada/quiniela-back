@@ -11,6 +11,9 @@ export const userRepository = {
   findByEmail(email: string) {
     return prisma.user.findUnique({ where: { email } });
   },
+  findByDocumentId(documentId: string) {
+    return prisma.user.findUnique({ where: { documentId } });
+  },
   create(data: Prisma.UserCreateInput) {
     return prisma.user.create({ data });
   },

@@ -12,7 +12,7 @@ model User {
   displayName  String       @map("display_name")
   firstName    String?      @map("first_name")
   lastName     String?      @map("last_name")
-  documentId   String?      @map("document_id")
+  documentId   String?      @map("document_id") @unique
   email        String?      @unique
   role         String       @default("user")
   avatar       String       @default("⚽")

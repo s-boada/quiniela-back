@@ -89,6 +89,10 @@ export async function register(input: {
     throw new HttpError(409, "El correo ya está registrado");
   }
 
+  if (await userRepository.findByDocumentId(documentId)) {
+    throw new HttpError(409, "La cédula de identidad ya está registrada");
+  }
+
   const dbUser = await userRepository.create({
     id: username,
     passwordHash: hashPassword(password),
