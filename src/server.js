@@ -410,7 +410,7 @@ app.put("/api/predictions/:matchId", authMiddleware, (req, res) => {
   }
 
   let qualifiedTeam = null;
-  if (KNOCKOUT_STAGES.has(match.stage) && homeScore === awayScore) {
+  if (KNOCKOUT_STAGES.has(match.stage)) {
     qualifiedTeam = typeof qualifiedTeamRaw === "string" ? qualifiedTeamRaw.trim() : "";
     if (!qualifiedTeam) {
       return res.status(400).json({ error: "Debes indicar cuál país clasifica en caso de empate" });
